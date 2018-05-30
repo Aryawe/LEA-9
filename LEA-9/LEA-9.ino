@@ -79,13 +79,19 @@ boolean invert_matrix(byte* pA, byte* pB)
   // Generate private key
   if (alpha != 0) 
   {
-    pB[INDEX(0, 0)] = (byte)( (int)(pA[INDEX(1, 1)] * alpha) % 256 ) ;
-    pB[INDEX(0, 1)] = (byte)( (int)(- pA[INDEX(0, 1)] * alpha) % 256 ) ;
-    pB[INDEX(1, 0)] = (byte)( (int)(- pA[INDEX(1, 0)] * alpha) % 256 ) ;
-    pB[INDEX(1, 1)] = (byte)( (int)(pA[INDEX(0, 0)] * alpha) % 256 ) ;
-
-    // Check key...
+    pB[INDEX(0, 0)] = (byte)( (int)( ((pA[INDEX(1, 1)] * pA[INDEX(2, 2)]) - (pA[INDEX(1, 2)] * pA[INDEX(2, 1)])) * alpha) % 256 ) ;
+    pB[INDEX(0, 1)] = (byte)( (int)( ((pA[INDEX(0, 2)] * pA[INDEX(2, 1)]) - (pA[INDEX(0, 1)] * pA[INDEX(2, 2)])) * alpha) % 256 ) ;
+    pB[INDEX(0, 2)] = (byte)( (int)( ((pA[INDEX(0, 1)] * pA[INDEX(1, 2)]) - (pA[INDEX(0, 2)] * pA[INDEX(1, 1)])) * alpha) % 256 ) ;
     
+    pB[INDEX(1, 0)] = (byte)( (int)( ((pA[INDEX(1, 2)] * pA[INDEX(2, 0)]) - (pA[INDEX(1, 0)] * pA[INDEX(2, 2)])) * alpha) % 256 ) ;
+    pB[INDEX(1, 1)] = (byte)( (int)( ((pA[INDEX(0, 0)] * pA[INDEX(2, 2)]) - (pA[INDEX(0, 2)] * pA[INDEX(2, 0)])) * alpha) % 256 ) ;
+    pB[INDEX(1, 2)] = (byte)( (int)( ((pA[INDEX(0, 2)] * pA[INDEX(1, 0)]) - (pA[INDEX(0, 0)] * pA[INDEX(1, 2)])) * alpha) % 256 ) ;
+    
+    pB[INDEX(2, 0)] = (byte)( (int)( ((pA[INDEX(1, 0)] * pA[INDEX(2, 1)]) - (pA[INDEX(1, 1)] * pA[INDEX(2, 0)])) * alpha) % 256 ) ;
+    pB[INDEX(2, 1)] = (byte)( (int)( ((pA[INDEX(0, 1)] * pA[INDEX(2, 0)]) - (pA[INDEX(0, 0)] * pA[INDEX(2, 1)])) * alpha) % 256 ) ;
+    pB[INDEX(2, 2)] = (byte)( (int)( ((pA[INDEX(0, 0)] * pA[INDEX(1, 1)]) - (pA[INDEX(0, 1)] * pA[INDEX(1, 0)])) * alpha) % 256 ) ;
+
+    // Check key...    
     if (checkKey(pA, pB))
     {
       return true ;
@@ -115,19 +121,44 @@ boolean checkKey(byte* vA, byte* vB)
   boolean authentic = true ;
   for (int k = 0; k < 3; k++)
   {
-    byte v[N] = {(byte)random(256), (byte)random(256)}; // Raw data
-    byte w[N] = {0, 0}; // Encrypted data
-    byte q[N] = {0, 0}; // Decrypted data
+    byte v[N] = {(byte)random(256), (byte)random(256), (byte)random(256)}; // Raw data
+    byte w[N] = {0, 0, 0}; // Encrypted data
+    byte q[N] = {0, 0, 0}; // Decrypted data
     
-    w[0] = ((vA[INDEX(0, 0)] * v[0]) + (vA[INDEX(0, 1)] * v[1])) % 256 ;
-    w[1] = ((vA[INDEX(1, 0)] * v[0]) + (vA[INDEX(1, 1)] * v[1])) % 256 ;
-  
-    q[0] = ((vB[INDEX(0, 0)] * w[0]) + (vB[INDEX(0, 1)] * w[1])) % 256 ;
-    q[1] = ((vB[INDEX(1, 0)] * w[0]) + (vB[INDEX(1, 1)] * w[1])) % 256 ;
+    w[0] = ((vA[INDEX(0, 0)] * v[0]) + (vA[INDEX(0, 1)] * v[1]) + (vA[INDEX(0, 2)] * v[2])) % 256 ;
+    w[1] = ((vA[INDEX(1, 0)] * v[0]) + (vA[INDEX(1, 1)] * v[1]) + (vA[INDEX(1, 2)] * v[2])) % 256 ;
+    w[2] = ((vA[INDEX(2, 0)] * v[0]) + (vA[INDEX(2, 1)] * v[1]) + (vA[INDEX(2, 2)] * v[2])) % 256 ;
+
+    q[0] = ((vB[INDEX(0, 0)] * w[0]) + (vB[INDEX(0, 1)] * w[1]) + (vB[INDEX(0, 2)] * w[2])) % 256 ;
+    q[1] = ((vB[INDEX(1, 0)] * w[0]) + (vB[INDEX(1, 1)] * w[1]) + (vB[INDEX(1, 2)] * w[2])) % 256 ;
+    q[2] = ((vB[INDEX(2, 0)] * w[0]) + (vB[INDEX(2, 1)] * w[1]) + (vB[INDEX(2, 2)] * w[2])) % 256 ;
     
-    if(q[0] != v[0] || q[1] != v[1])
+    if(q[0] != v[0] || q[1] != v[1] || q[2] != v[2])
     {
       authentic = false ;
+    }
+    else
+    {
+      Serial.print("Original:");
+      Serial.print(v[0], HEX) ;
+      Serial.print("\t") ;
+      Serial.print(v[1], HEX) ;
+      Serial.print("\t") ;
+      Serial.println(v[2], HEX) ;
+  
+      Serial.print("Crypted :");
+      Serial.print(w[0], HEX) ;
+      Serial.print("\t") ;
+      Serial.print(w[1], HEX) ;
+      Serial.print("\t") ;
+      Serial.println(w[2], HEX) ;
+  
+      Serial.print("Decoded :");
+      Serial.print(q[0], HEX) ;
+      Serial.print("\t") ;
+      Serial.print(q[1], HEX) ;
+      Serial.print("\t") ;
+      Serial.println(q[2], HEX) ;
     }
   }
 
